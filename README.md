@@ -14,6 +14,10 @@ If it is determined that the direction of the belt to be placed is to be reverse
 
 ## Release Notes
 
+### v1.0.1
+
+- Probably compatible with NebulaMultiplayerMod 0.6
+
 ### v1.0.0
 
 - Initial Release for 0.7.18 game version

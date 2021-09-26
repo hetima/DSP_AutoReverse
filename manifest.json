@@ -1,7 +1,7 @@
 {
     "name": "AutoReverse",
     "description": "Automatically reverse direction the conflicted belt when placed.",
-    "version_number": "1.0.0",
+    "version_number": "1.0.1",
     "dependencies": [],
     "website_url": "https://github.com/hetima/DSP_AutoReverse"
 }
