@@ -65,8 +65,9 @@ namespace HTAutoReverse
             return false;
         }
 
-        static public EBeltIO GetBeltIO(BuildTool_Path tool, int objId)
+        static public EBeltIO GetBeltIO(BuildTool_Path tool, int objId, out int otherObjId)
         {
+            otherObjId = 0;
             if (objId == 0 || !tool.ObjectIsBelt(objId))
             {
                 return EBeltIO.NotBelt;
@@ -77,19 +78,20 @@ namespace HTAutoReverse
             for (int i = 0; i < 4; i++)
             {
                 bool isOutput;
-                int otherObjId;
+                int otherId;
                 int otherSlot;
-                tool.factory.ReadObjectConn(objId, i, out isOutput, out otherObjId, out otherSlot);
-                if (otherObjId != 0)
+                tool.factory.ReadObjectConn(objId, i, out isOutput, out otherId, out otherSlot);
+                if (otherId != 0)
                 {
                     if (isOutput)
                     {
-                         hasInput  = true;
+                         hasInput = true;
                     }
                     else
                     {
                         hasOutput = true;
                     }
+                    otherObjId = otherId;
                 }
             }
 
@@ -137,7 +139,7 @@ namespace HTAutoReverse
             EBeltIO endBeltIO = EBeltIO.NotBelt;
             if (tool.buildPreviews[0].coverObjId != 0)
             {
-                startBeltIO = GetBeltIO(tool, tool.buildPreviews[0].coverObjId);
+                startBeltIO = GetBeltIO(tool, tool.buildPreviews[0].coverObjId, out int noUse);
                 if (startBeltIO == EBeltIO.None)
                 {
                     return false;
@@ -146,7 +148,7 @@ namespace HTAutoReverse
 
             if (tool.buildPreviews[bpCount - 1].coverObjId != 0)
             {
-                endBeltIO = GetBeltIO(tool, tool.buildPreviews[bpCount - 1].coverObjId);
+                endBeltIO = GetBeltIO(tool, tool.buildPreviews[bpCount - 1].coverObjId, out int noUse);
                 if (endBeltIO == EBeltIO.None)
                 {
                     return false;
@@ -234,7 +236,7 @@ namespace HTAutoReverse
         {
             isStraight = false;
 
-            EBeltIO beltIO = GetBeltIO(tool, objId);
+            EBeltIO beltIO = GetBeltIO(tool, objId, out int otherObjId);
             if (beltIO != EBeltIO.Input && beltIO != EBeltIO.Output)
             {
                 return false;
@@ -245,24 +247,11 @@ namespace HTAutoReverse
             if (objId > 0)
             {
                 EntityData e = tool.factory.entityPool[objId];
-                BeltComponent belt = tool.factory.cargoTraffic.beltPool[e.beltId];
-
-                if (belt.backInputId != 0 || belt.rightInputId != 0 || belt.leftInputId != 0)
-                {
-                    if (belt.outputId == 0)
-                    {
-                        result = true;
-                    }
-                }
-                else if (belt.outputId != 0)
+                if (e.id == objId)
                 {
                     result = true;
-                }
-                if (result)
-                {
-                    CargoPath cargoPath = tool.factory.cargoTraffic.GetCargoPath(belt.segPathId);
-                    Quaternion beltRot = cargoPath.pointRot[belt.segIndex];
-                    float dot = Vector3.Dot(beltRot * Vector3.forward, direction);
+                    Quaternion rot = e.rot;
+                    float dot = Vector3.Dot((rot * Vector3.forward).normalized, direction);
                     isStraight = Math.Abs(dot) > 0.9f;
                 }
             }
@@ -271,32 +260,47 @@ namespace HTAutoReverse
                 PrebuildData prebuildData = tool.factory.prebuildPool[-objId];
                 if (prebuildData.id == -objId)
                 {
+                    //ベルトのprebuildの向きは座標に沿うので判別不可能 南北 == forward/back
+                    //繋がってる方向を調べる めんどい
                     result = true;
-                    Quaternion rot = prebuildData.rot;
-                    float dot = Vector3.Dot(rot * Vector3.forward, direction);
+                    Vector3 otherPos;
+                    if (otherObjId > 0)
+                    {
+                        otherPos = tool.factory.entityPool[otherObjId].pos;
+                    }
+                    else
+                    {
+                        otherPos = tool.factory.prebuildPool[-otherObjId].pos;
+                    }
+                    float dot = Vector3.Dot((prebuildData.pos - otherPos).normalized, direction);
                     isStraight = Math.Abs(dot) > 0.9f;
+
+
                 }
             }
 
             return result;
         }
+
+        //東西南北4方向に存在するベルトの端を探す
+        //まっすぐ繋がるものを優先 見つからなければ角度関係なく繋がるもの
         static public int GetNearBeltEdge(BuildTool_Path tool)
         {
-            float gridSize = 0.6f; //グリッドサイズ(1.3くらい)に近いと取りこぼすので細かく刻む
+            float gridSize = 1.2f; //Snap させるので正確でなくてよい
             Vector3 cursorPos = tool.cursorTarget;
-            Quaternion rot = Maths.SphericalRotation(cursorPos, 0f);
-
-            Vector3[] directions = new Vector3[] { rot.Right(), rot.Left(), rot.Forward(), rot.Back() };
+            var directionFunc = new Func<Quaternion, Vector3>[] { Maths.Right, Maths.Left, Maths.Forward, Maths.Back };
             int[] eids = new int[] { 0, 0, 0, 0 };
             int[] distances = new int[] { 999, 999, 999, 999 };
             bool[] isStraights = new bool[] { false, false, false, false };
 
-            for (int idx = 0; idx < directions.Length; idx++)
+            for (int idx = 0; idx < directionFunc.Length; idx++)
             {
-                for (int k = 0; k <= 40; k++)
+                Vector3 pos = cursorPos;
+                Vector3 direction = directionFunc[idx](Maths.SphericalRotation(pos, 0f)).normalized;
+                for (int k = 0; k <= 32; k++)
                 {
                     bool foundAnything = false;
-                    Vector3 pos = cursorPos + (directions[idx] * (gridSize * k));
+                    pos = tool.actionBuild.planetAux.Snap(pos, tool.castTerrain);
 
                     BuildToolAccess.nearObjectCount = tool.actionBuild.nearcdLogic.GetBuildingsInAreaNonAlloc(pos, 0.4f, BuildToolAccess.nearObjectIds, false);
                     for (int i = 0; i < BuildToolAccess.nearObjectCount; i++)
@@ -310,7 +314,7 @@ namespace HTAutoReverse
                                 return 0;
                             }
 
-                            if (IsBeltEdge(tool, eid, directions[idx], out bool isStraight2))
+                            if (IsBeltEdge(tool, eid, direction, out bool isStraight2))
                             {
                                 eids[idx] = eid;
                                 distances[idx] = k;
@@ -325,26 +329,35 @@ namespace HTAutoReverse
                     {
                         break;
                     }
+                    //少しくらいのずれは Snap させるので問題ないが、極付近は大きくずれるので修正
+                    if (k % 3 == 2)
+                    {
+                        direction = directionFunc[idx](Maths.SphericalRotation(pos, 0f)).normalized;
+                    }
+                    pos += (direction * gridSize);
+
                 }
             }
 
             int min = distances[0];
             int nearestEid = eids[0];
             bool isStraight = isStraights[0];
-            for (int idx = 1; idx < directions.Length; idx++)
+            //まっすぐ繋がるもの
+            for (int idx = 1; idx < directionFunc.Length; idx++)
             {
-                if (isStraights[idx] && eids[idx] != 0 && min > distances[idx])
+                if (isStraights[idx] && eids[idx] != 0 && (min > distances[idx] || !isStraight))
                 {
                     nearestEid = eids[idx];
                     min = distances[idx];
                     isStraight = true;
                 }
             }
+            //繋がるもの
             if (!isStraight)
             {
                 min = distances[0];
                 nearestEid = eids[0];
-                for (int idx = 1; idx < directions.Length; idx++)
+                for (int idx = 1; idx < directionFunc.Length; idx++)
                 {
                     if (eids[idx] != 0 && min > distances[idx])
                     {
@@ -366,6 +379,7 @@ namespace HTAutoReverse
             int eid = GetNearBeltEdge(tool);
             if (eid != 0)
             {
+                //見つかったベルトをクリックして敷き始めたことにする 方向は AutoReverse に任せるので気にしない
                 tool.castObjectId = eid;
                 tool.startObjectId = tool.castObjectId;
                 tool.startTarget = tool.GetObjectPose(tool.startObjectId).position;
@@ -377,7 +391,7 @@ namespace HTAutoReverse
             else
             {
                 _lastSpotEid = 0;
-                _lastSpotPos = Vector3.zero;
+                _lastSpotPos = tool.cursorTarget;
                 tool.controller.cmd.stage = 0;
                 tool.actionBuild.model.connGraph.SetPointCount(0, true);
             }
