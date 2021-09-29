@@ -324,6 +324,10 @@ namespace HTAutoReverse
 
         static public void OnTheSpot(BuildTool_Path tool)
         {
+            if (tool.cursorTarget == _lastSpotPos && tool.startObjectId == _lastSpotEid)
+            {
+                return;
+            }
             int eid = GetNearBeltEdge(tool);
             if (eid > 0)
             {
@@ -332,13 +336,19 @@ namespace HTAutoReverse
                 tool.startTarget = tool.GetObjectPose(tool.startObjectId).position;
                 tool.pathPointCount = 0;
                 tool.controller.cmd.stage = 1;
+                _lastSpotEid = eid;
+                _lastSpotPos = tool.cursorTarget;
             }
             else
             {
+                _lastSpotEid = 0;
+                _lastSpotPos = Vector3.zero;
                 tool.controller.cmd.stage = 0;
                 tool.actionBuild.model.connGraph.SetPointCount(0, true);
             }
         }
+        internal static int _lastSpotEid = 0;
+        internal static Vector3 _lastSpotPos = Vector3.zero;
 
         static class Patch
         {
