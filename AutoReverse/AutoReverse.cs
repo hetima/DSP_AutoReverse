@@ -205,18 +205,17 @@ namespace HTAutoReverse
                 BuildPreview b = tool.buildPreviews[i];
                 b.output = tool.buildPreviews[i - 1];
             }
-
         }
 
-        protected static bool _doMod = false;
 
         static class Patch
         {
+            internal static bool _doReverse = false;
 
             [HarmonyPostfix, HarmonyPatch(typeof(BuildTool_Path), "ConfirmOperation")]
             public static void BuildTool_Path_ConfirmOperation_Postfix(BuildTool_Path __instance, ref bool __result)
             {
-                _doMod = false;
+                _doReverse = false;
                 if (IsReverseSituation(__instance))
                 {
                     __instance.actionBuild.model.cursorText += " (Reverse)";
@@ -225,19 +224,19 @@ namespace HTAutoReverse
                     {
                         graph.colors[i] = i % 2 == 0 ? 1U : 3U;
                     }
-                    _doMod = __result;
+                    _doReverse = __result;
                 }
             }
 
             [HarmonyPrefix, HarmonyPatch(typeof(BuildTool_Path), "CreatePrebuilds"), HarmonyBefore("dsp.nebula-multiplayer")]
             public static void BuildTool_Path_CreatePrebuilds_Prefix(BuildTool_Path __instance)
             {
-                if (_doMod && IsReverseSituation(__instance))
+                if (_doReverse && IsReverseSituation(__instance))
                 {
                     ReverseConnection(__instance);
                     //LogBuildPreviews(__instance);
                 }
-                _doMod = false;
+                _doReverse = false;
 
             }
 
