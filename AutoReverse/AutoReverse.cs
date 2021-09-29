@@ -71,24 +71,41 @@ namespace HTAutoReverse
             {
                 return EBeltIO.NotBelt;
             }
-            EntityData e = tool.factory.entityPool[objId];
-            BeltComponent belt = tool.factory.cargoTraffic.beltPool[e.beltId];
 
-            if (belt.backInputId != 0 || belt.rightInputId != 0 || belt.leftInputId != 0)
+            bool hasOutput = false;
+            bool hasInput = false;
+            for (int i = 0; i < 4; i++)
             {
-                if (belt.outputId != 0)
+                bool isOutput;
+                int otherObjId;
+                int otherSlot;
+                tool.factory.ReadObjectConn(objId, i, out isOutput, out otherObjId, out otherSlot);
+                if (otherObjId != 0)
                 {
-                    return EBeltIO.None;
+                    if (isOutput)
+                    {
+                         hasInput  = true;
+                    }
+                    else
+                    {
+                        hasOutput = true;
+                    }
                 }
-                return EBeltIO.Output;
-
             }
-            if (belt.outputId != 0)
+
+            if (hasInput == hasOutput)
+            {
+                return EBeltIO.None;
+            }
+            else if (hasInput)
             {
                 return EBeltIO.Input;
             }
-
-            return EBeltIO.None; //どこにも繋がっていない丸いやつ
+            else if (hasOutput)
+            {
+                return EBeltIO.Output;
+            }
+            return EBeltIO.None;
         }
 
         static public bool IsReverseSituation(BuildTool_Path tool)
@@ -118,7 +135,7 @@ namespace HTAutoReverse
 
             EBeltIO startBeltIO = EBeltIO.NotBelt;
             EBeltIO endBeltIO = EBeltIO.NotBelt;
-            if (tool.buildPreviews[0].coverObjId > 0)
+            if (tool.buildPreviews[0].coverObjId != 0)
             {
                 startBeltIO = GetBeltIO(tool, tool.buildPreviews[0].coverObjId);
                 if (startBeltIO == EBeltIO.None)
@@ -127,7 +144,7 @@ namespace HTAutoReverse
                 }
             }
 
-            if (tool.buildPreviews[bpCount - 1].coverObjId > 0)
+            if (tool.buildPreviews[bpCount - 1].coverObjId != 0)
             {
                 endBeltIO = GetBeltIO(tool, tool.buildPreviews[bpCount - 1].coverObjId);
                 if (endBeltIO == EBeltIO.None)
@@ -136,7 +153,7 @@ namespace HTAutoReverse
                 }
             }
 
-            if (tool.buildPreviews[bpCount - 1].outputObjId > 0)
+            if (tool.buildPreviews[bpCount - 1].outputObjId != 0)
             {
                 if (ObjectIsMiner(tool, tool.buildPreviews[bpCount - 1].outputObjId))
                 {
@@ -216,31 +233,49 @@ namespace HTAutoReverse
         static public bool IsBeltEdge(BuildTool_Path tool, int objId, Vector3 direction, out bool isStraight)
         {
             isStraight = false;
-            if (objId <= 0 || !tool.ObjectIsBelt(objId))
+
+            EBeltIO beltIO = GetBeltIO(tool, objId);
+            if (beltIO != EBeltIO.Input && beltIO != EBeltIO.Output)
             {
                 return false;
             }
-            bool result = false;
-            EntityData e = tool.factory.entityPool[objId];
-            BeltComponent belt = tool.factory.cargoTraffic.beltPool[e.beltId];
 
-            if (belt.backInputId != 0 || belt.rightInputId != 0 || belt.leftInputId != 0)
+            bool result = false;
+
+            if (objId > 0)
             {
-                if (belt.outputId == 0)
+                EntityData e = tool.factory.entityPool[objId];
+                BeltComponent belt = tool.factory.cargoTraffic.beltPool[e.beltId];
+
+                if (belt.backInputId != 0 || belt.rightInputId != 0 || belt.leftInputId != 0)
+                {
+                    if (belt.outputId == 0)
+                    {
+                        result = true;
+                    }
+                }
+                else if (belt.outputId != 0)
                 {
                     result = true;
                 }
+                if (result)
+                {
+                    CargoPath cargoPath = tool.factory.cargoTraffic.GetCargoPath(belt.segPathId);
+                    Quaternion beltRot = cargoPath.pointRot[belt.segIndex];
+                    float dot = Vector3.Dot(beltRot * Vector3.forward, direction);
+                    isStraight = Math.Abs(dot) > 0.9f;
+                }
             }
-            else if (belt.outputId != 0)
+            else
             {
-                result = true;
-            }
-            if (result)
-            {
-                CargoPath cargoPath = tool.factory.cargoTraffic.GetCargoPath(belt.segPathId);
-                Quaternion beltRot = cargoPath.pointRot[belt.segIndex];
-                float dot = Vector3.Dot(beltRot * Vector3.forward, direction);
-                isStraight = Math.Abs(dot) > 0.9f;
+                PrebuildData prebuildData = tool.factory.prebuildPool[-objId];
+                if (prebuildData.id == -objId)
+                {
+                    result = true;
+                    Quaternion rot = prebuildData.rot;
+                    float dot = Vector3.Dot(rot * Vector3.forward, direction);
+                    isStraight = Math.Abs(dot) > 0.9f;
+                }
             }
 
             return result;
@@ -275,7 +310,7 @@ namespace HTAutoReverse
                                 return 0;
                             }
 
-                            if (eid > 0 && IsBeltEdge(tool, eid, directions[idx], out bool isStraight2))
+                            if (IsBeltEdge(tool, eid, directions[idx], out bool isStraight2))
                             {
                                 eids[idx] = eid;
                                 distances[idx] = k;
@@ -298,7 +333,7 @@ namespace HTAutoReverse
             bool isStraight = isStraights[0];
             for (int idx = 1; idx < directions.Length; idx++)
             {
-                if (isStraights[idx] && eids[idx] > 0 && min > distances[idx])
+                if (isStraights[idx] && eids[idx] != 0 && min > distances[idx])
                 {
                     nearestEid = eids[idx];
                     min = distances[idx];
@@ -311,7 +346,7 @@ namespace HTAutoReverse
                 nearestEid = eids[0];
                 for (int idx = 1; idx < directions.Length; idx++)
                 {
-                    if (eids[idx] > 0 && min > distances[idx])
+                    if (eids[idx] != 0 && min > distances[idx])
                     {
                         nearestEid = eids[idx];
                         min = distances[idx];
@@ -329,7 +364,7 @@ namespace HTAutoReverse
                 return;
             }
             int eid = GetNearBeltEdge(tool);
-            if (eid > 0)
+            if (eid != 0)
             {
                 tool.castObjectId = eid;
                 tool.startObjectId = tool.castObjectId;
