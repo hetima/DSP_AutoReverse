@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Configuration;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -17,11 +18,15 @@ namespace HTAutoReverse
 
         new internal static ManualLogSource Logger;
 
+        public static ConfigEntry<bool> enableOnTheSpot;
+
         void Awake()
         {
             Logger = base.Logger;
             //Logger.LogInfo("Awake");
 
+            enableOnTheSpot = Config.Bind("General", "enableOnTheSpot", true,
+                "Enable OnTheSpot mode when Ctrl is down");
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -208,13 +213,150 @@ namespace HTAutoReverse
         }
 
 
+        static public bool IsBeltEdge(BuildTool_Path tool, int objId, Vector3 direction, out bool isStraight)
+        {
+            isStraight = false;
+            if (objId <= 0 || !tool.ObjectIsBelt(objId))
+            {
+                return false;
+            }
+            bool result = false;
+            EntityData e = tool.factory.entityPool[objId];
+            BeltComponent belt = tool.factory.cargoTraffic.beltPool[e.beltId];
+
+            if (belt.backInputId != 0 || belt.rightInputId != 0 || belt.leftInputId != 0)
+            {
+                if (belt.outputId == 0)
+                {
+                    result = true;
+                }
+            }
+            else if (belt.outputId != 0)
+            {
+                result = true;
+            }
+            if (result)
+            {
+                CargoPath cargoPath = tool.factory.cargoTraffic.GetCargoPath(belt.segPathId);
+                Quaternion beltRot = cargoPath.pointRot[belt.segIndex];
+                float dot = Vector3.Dot(beltRot * Vector3.forward, direction);
+                isStraight = Math.Abs(dot) > 0.9f;
+            }
+
+            return result;
+        }
+        static public int GetNearBeltEdge(BuildTool_Path tool)
+        {
+            float gridSize = 0.6f; //グリッドサイズ(1.3くらい)に近いと取りこぼすので細かく刻む
+            Vector3 cursorPos = tool.cursorTarget;
+            Quaternion rot = Maths.SphericalRotation(cursorPos, 0f);
+
+            Vector3[] directions = new Vector3[] { rot.Right(), rot.Left(), rot.Forward(), rot.Back() };
+            int[] eids = new int[] { 0, 0, 0, 0 };
+            int[] distances = new int[] { 999, 999, 999, 999 };
+            bool[] isStraights = new bool[] { false, false, false, false };
+
+            for (int idx = 0; idx < directions.Length; idx++)
+            {
+                for (int k = 0; k <= 40; k++)
+                {
+                    bool foundAnything = false;
+                    Vector3 pos = cursorPos + (directions[idx] * (gridSize * k));
+
+                    BuildToolAccess.nearObjectCount = tool.actionBuild.nearcdLogic.GetBuildingsInAreaNonAlloc(pos, 0.4f, BuildToolAccess.nearObjectIds, false);
+                    for (int i = 0; i < BuildToolAccess.nearObjectCount; i++)
+                    {
+                        int eid = BuildToolAccess.nearObjectIds[i];
+                        if (eid != 0)
+                        {
+                            if (k == 0)
+                            {
+                                //真下になんかある
+                                return 0;
+                            }
+
+                            if (eid > 0 && IsBeltEdge(tool, eid, directions[idx], out bool isStraight2))
+                            {
+                                eids[idx] = eid;
+                                distances[idx] = k;
+                                isStraights[idx] = isStraight2;
+                            }
+
+                            foundAnything = true;
+                            break;
+                        }
+                    }
+                    if (foundAnything)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            int min = distances[0];
+            int nearestEid = eids[0];
+            bool isStraight = isStraights[0];
+            for (int idx = 1; idx < directions.Length; idx++)
+            {
+                if (isStraights[idx] && eids[idx] > 0 && min > distances[idx])
+                {
+                    nearestEid = eids[idx];
+                    min = distances[idx];
+                    isStraight = true;
+                }
+            }
+            if (!isStraight)
+            {
+                min = distances[0];
+                nearestEid = eids[0];
+                for (int idx = 1; idx < directions.Length; idx++)
+                {
+                    if (eids[idx] > 0 && min > distances[idx])
+                    {
+                        nearestEid = eids[idx];
+                        min = distances[idx];
+                    }
+                }
+            }
+
+            return nearestEid;
+        }
+
+        static public void OnTheSpot(BuildTool_Path tool)
+        {
+            int eid = GetNearBeltEdge(tool);
+            if (eid > 0)
+            {
+                tool.castObjectId = eid;
+                tool.startObjectId = tool.castObjectId;
+                tool.startTarget = tool.GetObjectPose(tool.startObjectId).position;
+                tool.pathPointCount = 0;
+                tool.controller.cmd.stage = 1;
+            }
+            else
+            {
+                tool.controller.cmd.stage = 0;
+                tool.actionBuild.model.connGraph.SetPointCount(0, true);
+            }
+        }
+
         static class Patch
         {
             internal static bool _doReverse = false;
 
+
             [HarmonyPostfix, HarmonyPatch(typeof(BuildTool_Path), "ConfirmOperation")]
             public static void BuildTool_Path_ConfirmOperation_Postfix(BuildTool_Path __instance, ref bool __result)
             {
+                int stage = __instance.controller.cmd.stage;
+                if (enableOnTheSpot.Value)
+                {
+                    if (VFInput.control)
+                    {
+                        OnTheSpot(__instance);
+                    }
+                }
+
                 _doReverse = false;
                 if (IsReverseSituation(__instance))
                 {
@@ -224,8 +366,9 @@ namespace HTAutoReverse
                     {
                         graph.colors[i] = i % 2 == 0 ? 1U : 3U;
                     }
-                    _doReverse = __result;
+                    _doReverse = true;
                 }
+
             }
 
             [HarmonyPrefix, HarmonyPatch(typeof(BuildTool_Path), "CreatePrebuilds"), HarmonyBefore("dsp.nebula-multiplayer")]
@@ -237,7 +380,6 @@ namespace HTAutoReverse
                     //LogBuildPreviews(__instance);
                 }
                 _doReverse = false;
-
             }
 
             public static void LogBuildPreviews(BuildTool_Path tool)
@@ -257,5 +399,47 @@ namespace HTAutoReverse
                 }
             }
         }
+
+
+        public class BuildToolAccess : BuildTool
+        {
+
+            public static int[] nearObjectIds
+            {
+                get
+                {
+                    return _nearObjectIds;
+                }
+
+            }
+            public static int nearObjectCount
+            {
+                get
+                {
+                    return _nearObjectCount;
+                }
+                set
+                {
+                    _nearObjectCount = value;
+                }
+            }
+            public static int[] overlappedIds
+            {
+                get
+                {
+                    return _overlappedIds;
+                }
+
+            }
+            public static int overlappedCount
+            {
+                get
+                {
+                    return _overlappedCount;
+                }
+            }
+        }
+
+
     }
 }
