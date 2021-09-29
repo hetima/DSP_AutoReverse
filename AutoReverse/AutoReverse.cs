@@ -77,10 +77,7 @@ namespace HTAutoReverse
             bool hasInput = false;
             for (int i = 0; i < 4; i++)
             {
-                bool isOutput;
-                int otherId;
-                int otherSlot;
-                tool.factory.ReadObjectConn(objId, i, out isOutput, out otherId, out otherSlot);
+                tool.factory.ReadObjectConn(objId, i, out bool isOutput, out int otherId, out int otherSlot);
                 if (otherId != 0)
                 {
                     if (isOutput)
@@ -249,9 +246,23 @@ namespace HTAutoReverse
                 EntityData e = tool.factory.entityPool[objId];
                 if (e.id == objId)
                 {
+                    //result = true;
+                    //Quaternion rot = e.rot;
+                    //float dot = Vector3.Dot((rot * Vector3.forward).normalized, direction);
+                    //isStraight = Math.Abs(dot) > 0.9f;
+                    //タイミングによってはprebuildと繋がった丸い状態になってる時がある
+                    //なので繋がってる方向で判別する
                     result = true;
-                    Quaternion rot = e.rot;
-                    float dot = Vector3.Dot((rot * Vector3.forward).normalized, direction);
+                    Vector3 otherPos;
+                    if (otherObjId > 0)
+                    {
+                        otherPos = tool.factory.entityPool[otherObjId].pos;
+                    }
+                    else
+                    {
+                        otherPos = tool.factory.prebuildPool[-otherObjId].pos;
+                    }
+                    float dot = Vector3.Dot((e.pos - otherPos).normalized, direction);
                     isStraight = Math.Abs(dot) > 0.9f;
                 }
             }
@@ -261,7 +272,7 @@ namespace HTAutoReverse
                 if (prebuildData.id == -objId)
                 {
                     //ベルトのprebuildの向きは座標に沿うので判別不可能 南北 == forward/back
-                    //繋がってる方向を調べる めんどい
+                    //繋がってる方向を調べる
                     result = true;
                     Vector3 otherPos;
                     if (otherObjId > 0)
