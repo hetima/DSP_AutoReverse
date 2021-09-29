@@ -308,7 +308,7 @@ namespace HTAutoReverse
             {
                 Vector3 pos = cursorPos;
                 Vector3 direction = directionFunc[idx](Maths.SphericalRotation(pos, 0f)).normalized;
-                for (int k = 0; k <= 32; k++)
+                for (int k = 0; k <= 24; k++)
                 {
                     bool foundAnything = false;
                     pos = tool.actionBuild.planetAux.Snap(pos, tool.castTerrain);
