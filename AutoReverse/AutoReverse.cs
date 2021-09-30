@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 namespace HTAutoReverse
 {
-    [BepInPlugin(__GUID__, __NAME__, "1.0.1")]
+    [BepInPlugin(__GUID__, __NAME__, "2.0.0")]
     public class AutoReverse : BaseUnityPlugin
     {
         public const string __NAME__ = "AutoReverse";
