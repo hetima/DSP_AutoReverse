@@ -20,6 +20,7 @@ namespace HTAutoReverse
 
         public static ConfigEntry<bool> enableOnTheSpot;
         public static ConfigEntry<int> onTheSpotRange;
+        public static ConfigEntry<bool> enableBentConnection;
 
         void Awake()
         {
@@ -30,6 +31,8 @@ namespace HTAutoReverse
                 "Enable OnTheSpot mode when Ctrl is down");
             onTheSpotRange = Config.Bind("General", "onTheSpotRange", 24,
                 "Maximum range of OnTheSpot mode (1-100)");
+            enableBentConnection = Config.Bind("General", "enableBentConnection", false,
+                "Allow non-straight connections in OnTheSpot mode");
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -378,15 +381,22 @@ namespace HTAutoReverse
             //繋がるもの
             if (!isStraight)
             {
-                min = distances[0];
-                nearestEid = eids[0];
-                for (int idx = 1; idx < directionFunc.Length; idx++)
+                if (enableBentConnection.Value)
                 {
-                    if (eids[idx] != 0 && min > distances[idx])
+                    min = distances[0];
+                    nearestEid = eids[0];
+                    for (int idx = 1; idx < directionFunc.Length; idx++)
                     {
-                        nearestEid = eids[idx];
-                        min = distances[idx];
+                        if (eids[idx] != 0 && min > distances[idx])
+                        {
+                            nearestEid = eids[idx];
+                            min = distances[idx];
+                        }
                     }
+                }
+                else
+                {
+                    nearestEid = 0;
                 }
             }
 
