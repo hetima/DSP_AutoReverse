@@ -19,6 +19,7 @@ namespace HTAutoReverse
         new internal static ManualLogSource Logger;
 
         public static ConfigEntry<bool> enableOnTheSpot;
+        public static ConfigEntry<int> onTheSpotRange;
 
         void Awake()
         {
@@ -27,6 +28,8 @@ namespace HTAutoReverse
 
             enableOnTheSpot = Config.Bind("General", "enableOnTheSpot", true,
                 "Enable OnTheSpot mode when Ctrl is down");
+            onTheSpotRange = Config.Bind("General", "onTheSpotRange", 24,
+                "Maximum range of OnTheSpot mode (1-100)");
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -304,11 +307,20 @@ namespace HTAutoReverse
             int[] distances = new int[] { 999, 999, 999, 999 };
             bool[] isStraights = new bool[] { false, false, false, false };
 
+            int range = onTheSpotRange.Value;
+            if (range < 1)
+            {
+                range = 1;
+            }
+            if (range > 100)
+            {
+                range = 100;
+            }
             for (int idx = 0; idx < directionFunc.Length; idx++)
             {
                 Vector3 pos = cursorPos;
                 Vector3 direction = directionFunc[idx](Maths.SphericalRotation(pos, 0f)).normalized;
-                for (int k = 0; k <= 24; k++)
+                for (int k = 0; k <= range; k++)
                 {
                     bool foundAnything = false;
                     pos = tool.actionBuild.planetAux.Snap(pos, tool.castTerrain);
