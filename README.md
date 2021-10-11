@@ -15,6 +15,16 @@ Clicking with Ctrl key will place belt and continue to look for the next preview
 
 ![screen shot](https://raw.githubusercontent.com/hetima/DSP_AutoReverse/main/screen.gif)
 
+## Configuration
+
+AutoReverse has some settings depend on BepInEx (file name is `com.hetima.dsp.AutoReverse.cfg`).
+
+|Key|Type|Default|Description|
+|---|---|---|---|
+|enableOnTheSpot|bool|true|Enable OnTheSpot mode when Ctrl is down|
+|onTheSpotRange|int|24|Maximum range of OnTheSpot mode (1-100)|
+|enableBentConnection|bool|false|Allow non-straight connections in OnTheSpot mode|
+
 ## 説明
 
 コンベアベルトを延長設置するときに、既存のベルトと向きが相反するような繋ぎ方をした場合、正しく接続されるように方向を反転させます。  
@@ -28,6 +38,9 @@ Clicking with Ctrl key will place belt and continue to look for the next preview
 Ctrl キーを押したままクリックするとそのまま敷設され、次のプレビュー対象を探します。Ctrl キーを離すと通常モードに戻ります。
 
 ## Release Notes
+
+### v2.0.1
+- Added config (`onTheSpotRange` and `enableBentConnection`)
 
 ### v2.0.0
 
