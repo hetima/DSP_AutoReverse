@@ -310,6 +310,7 @@ namespace HTAutoReverse
             int[] distances = new int[] { 999, 999, 999, 999 };
             bool[] isStraights = new bool[] { false, false, false, false };
 
+
             int range = onTheSpotRange.Value;
             if (range < 1)
             {
@@ -319,6 +320,7 @@ namespace HTAutoReverse
             {
                 range = 100;
             }
+
             for (int idx = 0; idx < directionFunc.Length; idx++)
             {
                 Vector3 pos = cursorPos;
@@ -328,12 +330,36 @@ namespace HTAutoReverse
                     bool foundAnything = false;
                     pos = tool.actionBuild.planetAux.Snap(pos, tool.castTerrain);
 
-                    BuildToolAccess.nearObjectCount = tool.actionBuild.nearcdLogic.GetBuildingsInAreaNonAlloc(pos, 0.4f, BuildToolAccess.nearObjectIds, false);
-                    for (int i = 0; i < BuildToolAccess.nearObjectCount; i++)
+                    //GetColliderData で情報取れるのはカーソル位置から11グリッド程度まで
+                    //ActiveEntityBuildCollidersInArea を呼んで都度更新
+                    //このメソッドは使われていないのでずっと使えるか不安
+                    tool.actionBuild.nearcdLogic.ActiveEntityBuildCollidersInArea(pos, 0.3f);
+                    //BuildingTriggers = 425984 //Prebuild + BuildingCollider + BuildPreview
+                    int colcnt = Physics.OverlapSphereNonAlloc(pos, 0.3f, BuildToolAccess.TmpCols, 425984, QueryTriggerInteraction.Collide);
+
+                    //2.0.1までの方法 隣接する建物もヒットして除外するのが面倒
+                    //BuildToolAccess.nearObjectCount = tool.actionBuild.nearcdLogic.GetBuildingsInAreaNonAlloc(pos, 0.1f, BuildToolAccess.nearObjectIds, false);
+                    for (int i = 0; i < colcnt; i++)
                     {
-                        int eid = BuildToolAccess.nearObjectIds[i];
+                        int eid = 0;
+                        if (tool.planet.physics.GetColliderData(BuildToolAccess.TmpCols[i], out ColliderData colliderData))
+                        {
+                            if (colliderData.objType == EObjectType.Entity)
+                            {
+                                eid = colliderData.objId;
+                            }
+                            else if (colliderData.objType == EObjectType.Prebuild)
+                            {
+                                eid = -colliderData.objId;
+                            }
+                        }
                         if (eid != 0)
                         {
+                            if (tool.ObjectIsInserter(eid))
+                            {
+                                //ソーターは無視
+                                continue;
+                            }
                             if (k == 0)
                             {
                                 //真下になんかある
@@ -360,6 +386,7 @@ namespace HTAutoReverse
                     {
                         direction = directionFunc[idx](Maths.SphericalRotation(pos, 0f)).normalized;
                     }
+
                     pos += (direction * gridSize);
 
                 }
@@ -495,6 +522,29 @@ namespace HTAutoReverse
 
         public class BuildToolAccess : BuildTool
         {
+            public static int TmpColsLength()
+            {
+                int result = 0;
+                for (int i = 0; i < _tmp_cols.Length; i++)
+                {
+                    if (_tmp_cols[i] != null)
+                    {
+                        result++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                return result;
+            }
+            public static Collider[] TmpCols
+            {
+                get
+                {
+                    return _tmp_cols;
+                }
+            }
 
             public static int[] nearObjectIds
             {
