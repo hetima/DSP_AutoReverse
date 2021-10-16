@@ -39,6 +39,9 @@ Ctrl キーを押したままクリックするとそのまま敷設され、次
 
 ## Release Notes
 
+### v2.0.2
+- Improve belt edge detection
+
 ### v2.0.1
 - Added config (`onTheSpotRange` and `enableBentConnection`)
 
