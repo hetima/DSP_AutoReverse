@@ -208,7 +208,7 @@ namespace HTAutoReverse
 
             
             //ベルトの端まで辿る
-            int limit = 64; //
+            int limit = 300; //
             while (objId != 0 && limit > 0)
             {
                 limit--;
@@ -267,7 +267,7 @@ namespace HTAutoReverse
                 path.Add(pos); //プレビュー用にベルトの位置も追加
 
                 Vector3 cursorPos = tool.cursorTarget;
-                limit = 200;
+                limit = 300;
                 float gridSize = 1.2f;
                 float prevDist = (cursorPos - pos).sqrMagnitude;
                 while (limit > 0)
@@ -341,7 +341,7 @@ namespace HTAutoReverse
                 return 0;
             }
             int prevBeltId = 0;
-            int limit = 64; //
+            int limit = 300; //
             while (beltId != 0 && limit > 0)
             {
                 limit--;
