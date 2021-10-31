@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="AutoReverse.cs" />
     <Compile Include="OnTheSpot.cs" />
+    <Compile Include="ParallelBuild.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

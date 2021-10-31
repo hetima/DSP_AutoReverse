@@ -73,9 +73,12 @@ namespace HTAutoReverse
         //まっすぐ繋がるものを優先 見つからなければ角度関係なく繋がるもの
         static public int GetNearBeltEdge(BuildTool_Path tool)
         {
+            ParallelBuild.Reset();
+
             float gridSize = 1.2f; //Snap させるので正確でなくてよい
             Vector3 cursorPos = tool.cursorTarget;
             var directionFunc = new Func<Quaternion, Vector3>[] { Maths.Right, Maths.Left, Maths.Forward, Maths.Back };
+            var reverseFuncs = new Func<Quaternion, Vector3>[] { Maths.Left, Maths.Right, Maths.Back, Maths.Forward };
             int[] eids = new int[] { 0, 0, 0, 0 };
             int[] distances = new int[] { 999, 999, 999, 999 };
             bool[] isStraights = new bool[] { false, false, false, false };
@@ -164,6 +167,7 @@ namespace HTAutoReverse
             int min = distances[0];
             int nearestEid = eids[0];
             bool isStraight = isStraights[0];
+            Func<Quaternion, Vector3> reverseFunc = reverseFuncs[0];
             //まっすぐ繋がるもの
             for (int idx = 1; idx < directionFunc.Length; idx++)
             {
@@ -171,13 +175,18 @@ namespace HTAutoReverse
                 {
                     nearestEid = eids[idx];
                     min = distances[idx];
+                    reverseFunc = reverseFuncs[idx];
                     isStraight = true;
                 }
+            }
+            if (isStraight && AutoReverse.parallelBuildEnabled)
+            {
+                ParallelBuild.UpdateState(tool, nearestEid, reverseFunc);
             }
             //繋がるもの
             if (!isStraight)
             {
-                if (AutoReverse.enableBentConnection.Value)
+                if (AutoReverse.enableBentConnection.Value && !AutoReverse.parallelBuildEnabled)
                 {
                     min = distances[0];
                     nearestEid = eids[0];
@@ -199,7 +208,9 @@ namespace HTAutoReverse
             return nearestEid;
         }
 
-        static public void UpdatePreview(BuildTool_Path tool)
+       
+
+        static public void UpdateState(BuildTool_Path tool)
         {
             if (tool.cursorTarget == _lastSpotPos && tool.startObjectId == _lastSpotEid)
             {
@@ -224,6 +235,8 @@ namespace HTAutoReverse
                 tool.controller.cmd.stage = 0;
                 tool.actionBuild.model.connGraph.SetPointCount(0, true);
             }
+
+
         }
         internal static int _lastSpotEid = 0;
         internal static Vector3 _lastSpotPos = Vector3.zero;

@@ -23,11 +23,19 @@ namespace HTAutoReverse
         public const string __NAME__ = "AutoReverse";
         public const string __GUID__ = "com.hetima.dsp." + __NAME__;
 
-        new internal static ManualLogSource Logger;
+        new public static ManualLogSource Logger;
 
         public static ConfigEntry<bool> enableOnTheSpot;
         public static ConfigEntry<int> onTheSpotRange;
         public static ConfigEntry<bool> enableBentConnection;
+        public static ConfigEntry<bool> _enableParallelBuild;
+        public static bool parallelBuildEnabled
+        {
+		    get
+		    {
+			    return _enableParallelBuild.Value && enableOnTheSpot.Value;
+		    }
+        }
 
         void Awake()
         {
@@ -39,7 +47,9 @@ namespace HTAutoReverse
             onTheSpotRange = Config.Bind("General", "onTheSpotRange", 24,
                 "Maximum range of OnTheSpot mode (1-100)");
             enableBentConnection = Config.Bind("General", "enableBentConnection", false,
-                "Allow non-straight connections in OnTheSpot mode");
+                "Allow non-straight connections in OnTheSpot mode. Force disabled if \"enableParallelBuild\" is true");
+            _enableParallelBuild = Config.Bind("General", "enableParallelBuild", true,
+                "Enable ParallelBuild in OnTheSpot mode");
             new Harmony(__GUID__).PatchAll(typeof(Patch));
         }
 
@@ -246,7 +256,15 @@ namespace HTAutoReverse
                 {
                     if (VFInput.control)
                     {
-                        OnTheSpot.UpdatePreview(__instance);
+                        OnTheSpot.UpdateState(__instance);
+                        if (parallelBuildEnabled)
+                        {
+                            ParallelBuild.UpdatePreview(__instance);
+                        }
+                    }
+                    else
+                    {
+                        ParallelBuild.Reset();
                     }
                 }
 
@@ -261,7 +279,6 @@ namespace HTAutoReverse
                     }
                     _doReverse = true;
                 }
-
             }
 
             [HarmonyPrefix, HarmonyPatch(typeof(BuildTool_Path), "CreatePrebuilds"), HarmonyBefore("dsp.nebula-multiplayer")]
@@ -273,6 +290,11 @@ namespace HTAutoReverse
                     //LogBuildPreviews(__instance);
                 }
                 _doReverse = false;
+
+                if (VFInput.control && parallelBuildEnabled)
+                {
+                    ParallelBuild.CreatePrebuilds(__instance);
+                }
             }
 
             public static void LogBuildPreviews(BuildTool tool)
