@@ -179,14 +179,14 @@ namespace HTAutoReverse
                     isStraight = true;
                 }
             }
-            if (isStraight && AutoReverse.parallelBuildEnabled)
+            if (isStraight && AutoReverse.ParallelBuildEnabled)
             {
                 ParallelBuild.UpdateState(tool, nearestEid, reverseFunc);
             }
             //繋がるもの
             if (!isStraight)
             {
-                if (AutoReverse.enableBentConnection.Value && !AutoReverse.parallelBuildEnabled)
+                if (AutoReverse.enableBentConnection.Value && !AutoReverse.ParallelBuildEnabled)
                 {
                     min = distances[0];
                     nearestEid = eids[0];

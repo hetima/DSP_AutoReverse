@@ -29,7 +29,7 @@ namespace HTAutoReverse
         public static ConfigEntry<int> onTheSpotRange;
         public static ConfigEntry<bool> enableBentConnection;
         public static ConfigEntry<bool> _enableParallelBuild;
-        public static bool parallelBuildEnabled
+        public static bool ParallelBuildEnabled
         {
 		    get
 		    {
@@ -257,7 +257,7 @@ namespace HTAutoReverse
                     if (VFInput.control)
                     {
                         OnTheSpot.UpdateState(__instance);
-                        if (parallelBuildEnabled)
+                        if (ParallelBuildEnabled)
                         {
                             ParallelBuild.UpdatePreview(__instance);
                         }
@@ -291,7 +291,7 @@ namespace HTAutoReverse
                 }
                 _doReverse = false;
 
-                if (VFInput.control && parallelBuildEnabled)
+                if (VFInput.control && ParallelBuildEnabled)
                 {
                     ParallelBuild.CreatePrebuilds(__instance);
                 }
