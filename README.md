@@ -11,9 +11,13 @@ If it is determined that the direction of the belt to be placed is to be reverse
 
 Holding down Ctrl key will automatically generate a preview of a straight line from the edge of the nearby belt to the cursor position. The preview will be automatically updated when you move the mouse cursor. There is no need to consider belt direction, as it will be corrected by the basic AutoReverse function.
 
+In addition, if the `enableParallelBuild` setting is `true`, parallel laid belts belonging to the same production line will also be generated automatically.
+
 Clicking with Ctrl key will place belt and continue to look for the next preview target. Release the Ctrl key to return to normal mode.
 
-![screen shot](https://raw.githubusercontent.com/hetima/DSP_AutoReverse/main/screen.gif)
+![screenshot](https://raw.githubusercontent.com/hetima/DSP_AutoReverse/main/screen.gif)
+
+![screenshot2](https://raw.githubusercontent.com/hetima/DSP_AutoReverse/main/screen2.gif)
 
 ## Configuration
 
@@ -23,7 +27,8 @@ AutoReverse has some settings depend on BepInEx (file name is `com.hetima.dsp.Au
 |---|---|---|---|
 |enableOnTheSpot|bool|true|Enable OnTheSpot mode when Ctrl is down|
 |onTheSpotRange|int|24|Maximum range of OnTheSpot mode (1-100)|
-|enableBentConnection|bool|false|Allow non-straight connections in OnTheSpot mode|
+|enableParallelBuild|bool|true|Enable ParallelBuild in OnTheSpot mode|
+|enableBentConnection|bool|false|Allow non-straight connections in OnTheSpot mode. Force disabled if "enableParallelBuild" is true|
 
 ## 説明
 
@@ -35,9 +40,15 @@ AutoReverse has some settings depend on BepInEx (file name is `com.hetima.dsp.Au
 
 ベルト敷設時に Ctrl キーを押していると近くのベルトの端からカーソルの位置まで直線のプレビューが自動生成されます。マウスカーソルを移動させるとプレビューは自動的に更新されます。ベルトの向きは AutoReverse の基本機能で補正されるので気にする必要はありません。
 
+更に `enableParallelBuild` 設定を `true` にしていると、同じ生産ラインに属する平行に敷設されたベルトも自動生成されます。
+
 Ctrl キーを押したままクリックするとそのまま敷設され、次のプレビュー対象を探します。Ctrl キーを離すと通常モードに戻ります。
 
+
 ## Release Notes
+
+### v2.1.0
+- Added ParallelBuild mode
 
 ### v2.0.2
 - Improve belt edge detection
