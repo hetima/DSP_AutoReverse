@@ -47,6 +47,9 @@ Ctrl キーを押したままクリックするとそのまま敷設され、次
 
 ## Release Notes
 
+### v2.1.1
+- Check inventory item count in ParallelBuild
+
 ### v2.1.0
 - Added ParallelBuild mode
 
