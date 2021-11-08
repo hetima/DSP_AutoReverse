@@ -118,14 +118,79 @@ namespace HTAutoReverse
             return buildPreviews;
         }
 
-        //プレビュー表示
-        static public void UpdatePreview(BuildTool_Path tool)
+
+        //アイテムが足りるかチェック
+        static public bool CheckItemCount(BuildTool tool)
         {
-            if (_pathInfos == null)
+            if (_pathInfos == null || _pathInfos.Count == 0)
             {
-                return;
+                return true;
             }
+
+            int mk1 = tool.player.package.GetItemCount(2001);
+            int mk2 = tool.player.package.GetItemCount(2002);
+            int mk3 = tool.player.package.GetItemCount(2003);
+            foreach (PathInfo pathInfo in _pathInfos)
+            {
+                ItemProto proto = tool.GetItemProto(pathInfo.beltObjId);
+                int itemId = proto.ID;
+                switch (itemId)
+                {
+                    case 2001:
+                        mk1 -= (pathInfo.path.Count - 1);
+                        break;
+                    case 2002:
+                        mk2 -= (pathInfo.path.Count - 1);
+                        break;
+                    case 2003:
+                        mk3 -= (pathInfo.path.Count - 1);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            switch (tool.player.inhandItemId)
+            {
+                case 2001:
+                    mk1 += tool.player.inhandItemCount;
+                    mk1 -= (tool.buildPreviews.Count);
+                    break;
+                case 2002:
+                    mk2 += tool.player.inhandItemCount;
+                    mk2 -= (tool.buildPreviews.Count);
+                    break;
+                case 2003:
+                    mk3 += tool.player.inhandItemCount;
+                    mk3 -= (tool.buildPreviews.Count);
+                    break;
+                default:
+                    break;
+            }
+
+            if (mk1 < 0 || mk2 < 0 || mk3 < 0)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        //プレビュー表示
+        //アイテム不足ならfalseを返す
+        static public bool UpdatePreview(BuildTool_Path tool)
+        {
+            if (_pathInfos == null || _pathInfos.Count == 0)
+            {
+                return true;
+            }
+
+            bool result = CheckItemCount(tool);
+
             uint color = 4U;
+            if (!result)
+            {
+                color = 0U;
+            }
 
             foreach (PathInfo pathInfo in _pathInfos)
             {
@@ -163,6 +228,7 @@ namespace HTAutoReverse
                     }
                 }
             }
+            return result;
         }
 
         static public void Reset()

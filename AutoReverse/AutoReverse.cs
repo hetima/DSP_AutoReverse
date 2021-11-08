@@ -249,17 +249,21 @@ namespace HTAutoReverse
 
 
             [HarmonyPostfix, HarmonyPatch(typeof(BuildTool_Path), "ConfirmOperation")]
-            public static void BuildTool_Path_ConfirmOperation_Postfix(BuildTool_Path __instance, ref bool __result)
+            public static void BuildTool_Path_ConfirmOperation_Postfix(BuildTool_Path __instance, bool condition, ref bool __result)
             {
                 int stage = __instance.controller.cmd.stage;
                 if (enableOnTheSpot.Value)
                 {
-                    if (VFInput.control)
+                    if (VFInput.control && __instance.buildPreviews.Count > 0)
                     {
                         OnTheSpot.UpdateState(__instance);
-                        if (ParallelBuildEnabled)
+                        if (ParallelBuildEnabled && condition)
                         {
-                            ParallelBuild.UpdatePreview(__instance);
+                            if (!ParallelBuild.UpdatePreview(__instance))
+                            {
+                                //アイテム不足
+                                __result = false;
+                            }
                         }
                     }
                     else
