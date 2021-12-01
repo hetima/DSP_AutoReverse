@@ -17,7 +17,7 @@ namespace HTAutoReverse
         Output,
     }
 
-    [BepInPlugin(__GUID__, __NAME__, "2.1.1")]
+    [BepInPlugin(__GUID__, __NAME__, "2.1.2")]
     public class AutoReverse : BaseUnityPlugin
     {
         public const string __NAME__ = "AutoReverse";
