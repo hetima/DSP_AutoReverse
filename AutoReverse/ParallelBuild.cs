@@ -133,7 +133,7 @@ namespace HTAutoReverse
             foreach (PathInfo pathInfo in _pathInfos)
             {
                 ItemProto proto = tool.GetItemProto(pathInfo.beltObjId);
-                int itemId = proto.ID;
+                int itemId = (proto != null ? proto.ID : 0);
                 switch (itemId)
                 {
                     case 2001:
